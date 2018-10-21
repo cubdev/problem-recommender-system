@@ -15,11 +15,10 @@ class Crowler:
 	Public methods-
 	@method get_data: return data as per HTML tags provided.
 	"""
-	def __init__(self, n_threads=20, d_check=False):
-		self.lock 		= threading.Lock()	# Mutex for critical section
-		self.n_threads	= n_threads			# Number of threads at a time
-		self.d_check 	= d_check			# Check for duplicate data
-		self.data 		= []				# Store result data
+	def __init__(self, n_threads=20):
+		self.lock = threading.Lock()	# Mutex for critical section
+		self.n_threads = n_threads	# Number of threads at a time
+		self.data = []			# Store result data
 		
 	def _crawl(self, url, tags):
 		try:
@@ -33,8 +32,8 @@ class Crowler:
 				tree = html.fromstring(page.content)
 				data = dict()	# Store current page data
 				for key in list(tags):
-					text = tee.xpath(self.tags[key])
-					data[key] = " ".join([ x.strip() for x in text ])
+					text = tree.xpath(tags[key])
+					data[key] = " ".join([ x.strip().encode('ascii', 'ignore') for x in text ])
 				
 				self.lock.acquire()
 				# Critical section start
@@ -55,6 +54,7 @@ class Crowler:
 
 		@return: List of dict
 		"""
+		self.data = [] # Need to reset everytime
 		for url in urls:
 			# Default 20 Threads(Exept main thread) at a time
 			while(threading.active_count() > self.n_threads):
@@ -68,16 +68,12 @@ class Crowler:
 		while (threading.active_count() > 1):
 			time.sleep(0.1)
 
-		# Need to reset self.data
-		result = self.data
-		self.data = []
-		return result
+		return self.data
 
 def get_cf_problem_urls(n_data=10, section="ABCDEFG"):
 	"""
-	Generates links of all problems of codeforces.com
-
-	url: http://codeforces.com/problemset/problem/1/A
+	Generates all the possible links of problems from
+	codeforces.com.
 	"""
 	base_url = 'http://codeforces.com/problemset/problem/%s/%s'
 	urls = list()
@@ -88,11 +84,20 @@ def get_cf_problem_urls(n_data=10, section="ABCDEFG"):
 	return urls
 
 def get_cf_submission_urls(user='e_coder', n_page=10):
-	pass
+	"""
+	Generates all the possible links of submission page
+	of an user on codeforces.com.
+	"""
+	base_url = 'http://codeforces.com/submissions/%s/page/%s'
+	urls = []
+	for i in range(n_page):
+		url = base_url % (user, str(i + 1))
+		urls.append(url)
+	return urls
 
 def get_cf_problem_tags():
 	tags = {
-		'title': "//div[@class='title']/text()",
+		'title': "//div[@class='header']/div[@class='title']/text()",
 		'statement': "//div[@class='problem-statement']/div[preceding-sibling::div[@class='header']]/p/text()",
 		'contest': "//a[contains(@href, '/contest/')]/text()",
 		'tags': "//span[@class='tag-box']/text()"
@@ -101,6 +106,7 @@ def get_cf_problem_tags():
 
 def get_cf_submission_tags():
 	tags = {
+		'pages': "//span[@class='page-index']/a/text()",
 		'sub_id': "//span[@submissionverdict='OK']/@submissionid",
 		'tid': "//tr[@data-submission-id='%s']/td/text()",
 	}
@@ -126,15 +132,11 @@ if __name__ == '__main__':
 
 	c = Crowler()
 	if options.query == 'MAKE_DATA':
-		urls = get_cf_problem_urls()
-		tags = get_cf_problem_tags()
-		data = c.get_data(urls, tags)
-		with open('dataset.txt', 'w') as f:
-			json.dump(data, f)
-	else:
-		'''
-		Beta testing block
-		'''
-		pass
+		data = c.get_data(get_cf_problem_urls(),
+			get_cf_problem_tags())
 
-''' END '''
+		import pandas as pd
+		df = pd.DataFrame(data)
+		print df.head()
+
+		df.to_csv('dataset.csv', index = False)
