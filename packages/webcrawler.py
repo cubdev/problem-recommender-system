@@ -1,5 +1,5 @@
 """
-	Web crowler using multi-threading
+	Web crawler using multi-threading
 	@author: Md Abdussamad
 """
 import sys, time, json
@@ -7,7 +7,7 @@ import requests
 import threading
 from lxml import html
 
-class Crowler:
+class Crawler:
 	"""
 	Generic web crawler. Only need to set no. of threads
 	(Exept main) to work simultaneously. By default it's 20.
@@ -127,10 +127,10 @@ if __name__ == '__main__':
 	''' Command line interface '''
 	options = parse_command()
 	if options.query == '':
-		print "Usage: pyhton web_crowler.py -q [query]"
+		print "Usage: pyhton web_crawler.py -q [query]"
 		exit(1)
 
-	c = Crowler()
+	c = Crawler()
 	if options.query == 'MAKE_DATA':
 		data = c.get_data(get_cf_problem_urls(),
 			get_cf_problem_tags())
